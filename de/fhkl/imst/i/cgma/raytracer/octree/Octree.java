@@ -14,6 +14,13 @@ public class Octree
 {
 	private static final int MIN_TRIANGLES = 10;
 	
+	private static final float[] VOXEL_RIGHT_FACE_NORMAL = {1, 0, 0};
+	private static final float[] VOXEL_LEFT_FACE_NORMAL = {-1, 0, 0};
+	private static final float[] VOXEL_TOP_FACE_NORMAL = {0, 1, 0};
+	private static final float[] VOXEL_BOTTOM_FACE_NORMAL = {0, -1, 0};
+	private static final float[] VOXEL_FRONT_FACE_NORMAL = {0, 0, 1};
+	private static final float[] VOXEL_BACK_FACE_NORMAL = {0, 0, -1};
+	
 	private float[] min;
 	private float[] max;
 	
@@ -53,44 +60,12 @@ public class Octree
 	{
 		Map<RT_Object, Integer[]> containedObjects = new HashMap<>();
 		
-		RT_Object scene;
-		T_Mesh mesh;
-		
-		float[] p1;
-		float[] p2;
-		float[] p3;
-		float[] p1p2 = new float[3];
-		float[] p1p3 = new float[3];
-		float[] p2p3 = new float[3];
-		
-		float[] n = new float[3];
-		float[] ip = new float[3];
-		
 		for (Map.Entry<RT_Object, Integer[]> object: this.parent.objects.entrySet())
 		{
-			scene = object.getKey();
+			RT_Object scene = object.getKey();
 			
-			// Bounding Box
-			// Wenn die Bounding Box des Objects außerhalb des Voxels liegt,
-			// kann das Objekt übersprungen werden
-			if (!(
-				// min-min-min
-				((this.min[0] <= scene.min[0] && this.max[0] >= scene.min[0]) && (this.min[1] <= scene.min[1] && this.max[1] >= scene.min[1]) && (this.min[2] <= scene.min[2] && this.max[2] >= scene.min[2])) ||
-				// min-min-max
-				((this.min[0] <= scene.min[0] && this.max[0] >= scene.min[0]) && (this.min[1] <= scene.min[1] && this.max[1] >= scene.min[1]) && (this.min[2] <= scene.max[2] && this.max[2] >= scene.max[2])) ||
-				// min-max-min
-				((this.min[0] <= scene.min[0] && this.max[0] >= scene.min[0]) && (this.min[1] <= scene.max[1] && this.max[1] >= scene.max[1]) && (this.min[2] <= scene.min[2] && this.max[2] >= scene.min[2])) ||
-				// min-max-max
-				((this.min[0] <= scene.min[0] && this.max[0] >= scene.min[0]) && (this.min[1] <= scene.max[1] && this.max[1] >= scene.max[1]) && (this.min[2] <= scene.max[2] && this.max[2] >= scene.max[2])) ||
-				// max-min-min
-				((this.min[0] <= scene.max[0] && this.max[0] >= scene.max[0]) && (this.min[1] <= scene.min[1] && this.max[1] >= scene.min[1]) && (this.min[2] <= scene.min[2] && this.max[2] >= scene.min[2])) ||
-				// max-min-max
-				((this.min[0] <= scene.max[0] && this.max[0] >= scene.max[0]) && (this.min[1] <= scene.min[1] && this.max[1] >= scene.min[1]) && (this.min[2] <= scene.max[2] && this.max[2] >= scene.max[2])) ||
-				// max-max-min
-				((this.min[0] <= scene.max[0] && this.max[0] >= scene.max[0]) && (this.min[1] <= scene.max[1] && this.max[1] >= scene.max[1]) && (this.min[2] <= scene.min[2] && this.max[2] >= scene.min[2])) ||
-				// max-max-max
-				((this.min[0] <= scene.max[0] && this.max[0] >= scene.max[0]) && (this.min[1] <= scene.max[1] && this.max[1] >= scene.max[1]) && (this.min[2] <= scene.max[2] && this.max[2] >= scene.max[2]))
-			)) {
+			if (!isBoundingBoxInsideVoxel(scene))
+			{
 				continue;
 			}
 			
@@ -102,119 +77,19 @@ public class Octree
 			}
 			else if (scene instanceof T_Mesh)
 			{
-				mesh = (T_Mesh)scene;
+				T_Mesh mesh = (T_Mesh)scene;
 				Set<Integer> indices = new TreeSet<>();
 				// Teste für jedes Dreieck des Objektes, 
 				// ob es innerhalb des Voxels liegt.
 				for (int i = 0; mesh.triangles.length > i; ++i)
 				{
-					p1 = mesh.vertices[mesh.triangles[i][0]];
-					p2 = mesh.vertices[mesh.triangles[i][1]];
-					p3 = mesh.vertices[mesh.triangles[i][2]];
-					
-					// Wenn einer der Eckpunkte im Voxel liegt,
-					// liegt das Dreieck auch im Voxel.
-					if (((this.min[0] <= p1[0] && this.max[0] >= p1[0]) && (this.min[1] <= p1[1] && this.max[1] >= p1[1]) && (this.min[2] <= p1[2] && this.max[2] >= p1[2])) ||
-						((this.min[0] <= p2[0] && this.max[0] >= p2[0]) && (this.min[1] <= p2[1] && this.max[1] >= p2[1]) && (this.min[2] <= p2[2] && this.max[2] >= p2[2])) ||
-						((this.min[0] <= p3[0] && this.max[0] >= p3[0]) && (this.min[1] <= p3[1] && this.max[1] >= p3[1]) && (this.min[2] <= p3[2] && this.max[2] >= p3[2])))
+					if (isTriangleInsideVoxel(mesh.vertices[mesh.triangles[i][0]],
+											  mesh.vertices[mesh.triangles[i][1]],
+											  mesh.vertices[mesh.triangles[i][2]]))
 					{
 						indices.add(i);
 						continue;
-					}
-					
-					// Wenn keiner der Eckpunkte im Voxel liegt,
-					// müssen die Geraden zwischen den Eckpunkten
-					// auf Schnittpunkte mit den 6 Seiten des Voxels
-					// getestet werden:
-					p1p2[0] = p2[0] - p1[0];
-					p1p2[1] = p2[1] - p1[1];
-					p1p2[2] = p2[2] - p1[2];
-					
-					p1p3[0] = p3[0] - p1[0];
-					p1p3[1] = p3[1] - p1[1];
-					p1p3[2] = p3[2] - p1[2];
-
-					p2p3[0] = p3[0] - p2[0];
-					p2p3[1] = p3[1] - p2[1];
-					p2p3[2] = p3[2] - p2[2];
-					
-					// front
-					n[0] = 0;
-					n[1] = 0;
-					n[2] = 1;
-					if (intersects(p1, p1p2, n, this.max, ip) || intersects(p1, p1p3, n, this.max, ip) || intersects(p2, p2p3, n, this.max, ip))
-					{
-						if ((this.min[0] <= ip[0] && this.max[0] >= ip[0]) && (this.min[1] <= ip[1] && this.max[1] >= ip[1]))
-						{
-							indices.add(i);
-							continue;
-						}
-					}
-					
-					// back
-					n[0] = 0;
-					n[1] = 0;
-					n[2] = -1;
-					if (intersects(p1, p1p2, n, this.min, ip) || intersects(p1, p1p3, n, this.min, ip) || intersects(p2, p2p3, n, this.min, ip))
-					{
-						if ((this.min[0] <= ip[0] && this.max[0] >= ip[0]) && (this.min[1] <= ip[1] && this.max[1] >= ip[1]))
-						{
-							indices.add(i);
-							continue;
-						}
-					}
-					
-					// left
-					n[0] = -1;
-					n[1] = 0;
-					n[2] = 0;
-					if (intersects(p1, p1p2, n, this.min, ip) || intersects(p1, p1p3, n, this.min, ip) || intersects(p2, p2p3, n, this.min, ip))
-					{
-						if ((this.min[2] <= ip[2] && this.max[2] >= ip[2]) && (this.min[1] <= ip[1] && this.max[1] >= ip[1]))
-						{
-							indices.add(i);
-							continue;
-						}
-					}
-					
-					// right
-					n[0] = 1;
-					n[1] = 0;
-					n[2] = 0;
-					if (intersects(p1, p1p2, n, this.max, ip) || intersects(p1, p1p3, n, this.max, ip) || intersects(p2, p2p3, n, this.max, ip))
-					{
-						if ((this.min[2] <= ip[2] && this.max[2] >= ip[2]) && (this.min[1] <= ip[1] && this.max[1] >= ip[1]))
-						{
-							indices.add(i);
-							continue;
-						}
-					}
-					
-					// bottom
-					n[0] = 0;
-					n[1] = -1;
-					n[2] = 0;
-					if (intersects(p1, p1p2, n, this.min, ip) || intersects(p1, p1p3, n, this.min, ip) || intersects(p2, p2p3, n, this.min, ip))
-					{
-						if ((this.min[2] <= ip[2] && this.max[2] >= ip[2]) && (this.min[0] <= ip[0] && this.max[0] >= ip[0]))
-						{
-							indices.add(i);
-							continue;
-						}
-					}
-					
-					// top
-					n[0] = 0;
-					n[1] = 1;
-					n[2] = 0;
-					if (intersects(p1, p1p2, n, this.max, ip) || intersects(p1, p1p3, n, this.max, ip) || intersects(p2, p2p3, n, this.max, ip))
-					{
-						if ((this.min[2] <= ip[2] && this.max[2] >= ip[2]) && (this.min[0] <= ip[0] && this.max[0] >= ip[0]))
-						{
-							indices.add(i);
-							continue;
-						}
-					}
+					}					
 				}
 				if (indices.size() > 0)
 				{
@@ -223,6 +98,61 @@ public class Octree
 			}
 		}
 		return containedObjects;
+	}
+	
+	private boolean isBoundingBoxInsideVoxel(RT_Object scene)
+	{
+		return (isPointInsideVoxel(scene.min[0], scene.min[1], scene.min[2]) ||
+				isPointInsideVoxel(scene.min[0], scene.min[1], scene.max[2]) ||
+				isPointInsideVoxel(scene.min[0], scene.max[1], scene.min[2]) ||
+				isPointInsideVoxel(scene.min[0], scene.max[1], scene.max[2]) ||
+				isPointInsideVoxel(scene.max[0], scene.min[1], scene.min[2]) ||
+				isPointInsideVoxel(scene.max[0], scene.min[1], scene.max[2]) ||
+				isPointInsideVoxel(scene.max[0], scene.max[1], scene.min[2]) ||
+				isPointInsideVoxel(scene.max[0], scene.max[1], scene.max[2]));
+	}
+	
+	private boolean isTriangleInsideVoxel(float[] p1, float[] p2, float[] p3)
+	{
+		return (isPointInsideVoxel(p1) ||
+				isPointInsideVoxel(p2) ||
+				isPointInsideVoxel(p3) ||
+				isTriangleEdgeIntersectingVoxel(p1, p2, p3));
+	}
+	
+	private boolean isPointInsideVoxel(float[] p)
+	{
+		return isPointInsideVoxel(p[0], p[1], p[2]);
+	}
+	
+	private boolean isPointInsideVoxel(float x, float y, float z)
+	{
+		return ((this.min[0] <= x && this.max[0] >= x) &&
+				(this.min[1] <= y && this.max[1] >= y) &&
+				(this.min[2] <= z && this.max[2] >= z));
+	}
+	
+	private boolean isTriangleEdgeIntersectingVoxel(float[] p1, float[] p2, float[] p3)
+	{
+		float[] p1p2 = {p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]};
+		float[] p1p3 = {p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]};
+		float[] p2p3 = {p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]};
+		
+		return (isTriangleEdgeIntersectingFace(p1, p2, p1p2, p1p3, p2p3, VOXEL_RIGHT_FACE_NORMAL, this.max) ||
+				isTriangleEdgeIntersectingFace(p1, p2, p1p2, p1p3, p2p3, VOXEL_LEFT_FACE_NORMAL, this.min) ||
+				isTriangleEdgeIntersectingFace(p1, p2, p1p2, p1p3, p2p3, VOXEL_TOP_FACE_NORMAL, this.max) ||
+				isTriangleEdgeIntersectingFace(p1, p2, p1p2, p1p3, p2p3, VOXEL_BOTTOM_FACE_NORMAL, this.min) ||
+				isTriangleEdgeIntersectingFace(p1, p2, p1p2, p1p3, p2p3, VOXEL_FRONT_FACE_NORMAL, this.max) ||
+				isTriangleEdgeIntersectingFace(p1, p2, p1p2, p1p3, p2p3, VOXEL_BACK_FACE_NORMAL, this.min));
+	}
+	
+	private boolean isTriangleEdgeIntersectingFace(float[] p1, float[] p2, float[] p1p2, float[] p1p3, float[] p2p3, float[] n, float[] facePoint)
+	{
+		float[] ip = new float[3];
+		return ((intersects(p1, p1p2, n, facePoint, ip) ||
+				 intersects(p1, p1p3, n, facePoint, ip) ||
+				 intersects(p2, p2p3, n, facePoint, ip)) && 
+				isPointInsideVoxel(ip));
 	}
 	
 	private boolean intersects(float[] e, float[] v, float[] n, float[] p, float[] ip)
@@ -260,91 +190,43 @@ public class Octree
 		float[] newMax;
 		
 		// Bottom-Back-Left
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0];
-		newMin[1] = this.min[1];
-		newMin[2] = this.min[2];
-		newMax[0] = this.min[0] + delta[0];
-		newMax[1] = this.min[1] + delta[1];
-		newMax[2] = this.min[2] + delta[2];
+		newMin = new float[] {this.min[0], this.min[1], this.min[2]};
+		newMax = new float[] {this.min[0] + delta[0], this.min[1] + delta[1], this.min[2] + delta[2]};
 		this.children[0] = new Octree(this, newMin, newMax);
 		
 		// Bottom-Back-Right
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0] + delta[0];
-		newMin[1] = this.min[1];
-		newMin[2] = this.min[2];
-		newMax[0] = this.max[0];
-		newMax[1] = this.min[1] + delta[1];
-		newMax[2] = this.min[2] + delta[2];
+		newMin = new float[] {this.min[0] + delta[0], this.min[1], this.min[2]};
+		newMax = new float[] {this.max[0], this.min[1] + delta[1], this.min[2] + delta[2]};
 		this.children[1] = new Octree(this, newMin, newMax);
 		
 		// Bottom-Front-Right
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0] + delta[0];
-		newMin[1] = this.min[1];
-		newMin[2] = this.min[2] + delta[2];
-		newMax[0] = this.max[0];
-		newMax[1] = this.min[1] + delta[1];
-		newMax[2] = this.max[2];
+		newMin = new float[] {this.min[0] + delta[0], this.min[1], this.min[2] + delta[2]};
+		newMax = new float[] {this.max[0], this.min[1] + delta[1], this.max[2]};
 		this.children[2] = new Octree(this, newMin, newMax);
 		
 		// Bottom-Front-Left
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0];
-		newMin[1] = this.min[1];
-		newMin[2] = this.min[2] + delta[2];
-		newMax[0] = this.min[0] + delta[0];
-		newMax[1] = this.min[1] + delta[1];
-		newMax[2] = this.max[2];
+		newMin = new float[] {this.min[0], this.min[1], this.min[2] + delta[2]};
+		newMax = new float[] {this.min[0] + delta[0], this.min[1] + delta[1], this.max[2]};
 		this.children[3] = new Octree(this, newMin, newMax);
 		
 		// Top-Back-Left
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0];
-		newMin[1] = this.min[1] + delta[1];
-		newMin[2] = this.min[2];
-		newMax[0] = this.min[0] + delta[0];
-		newMax[1] = this.max[1];
-		newMax[2] = this.min[2] + delta[2];
+		newMin = new float[] {this.min[0], this.min[1] + delta[1], this.min[2]};
+		newMax = new float[] {this.min[0] + delta[0], this.max[1], this.min[2] + delta[2]};
 		this.children[4] = new Octree(this, newMin, newMax);
 		
 		// Top-Back-Right
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0] + delta[0];
-		newMin[1] = this.min[1] + delta[1];
-		newMin[2] = this.min[2];
-		newMax[0] = this.max[0];
-		newMax[1] = this.max[1];
-		newMax[2] = this.min[2] + delta[2];
+		newMin = new float[] {this.min[0] + delta[0], this.min[1] + delta[1], this.min[2]};
+		newMax = new float[] {this.max[0], this.max[1], this.min[2] + delta[2]};
 		this.children[5] = new Octree(this, newMin, newMax);
 		
 		// Top-Front-Right
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0] + delta[0];
-		newMin[1] = this.min[1] + delta[1];
-		newMin[2] = this.min[2] + delta[2];
-		newMax[0] = this.max[0];
-		newMax[1] = this.max[1];
-		newMax[2] = this.max[2];
+		newMin = new float[] {this.min[0] + delta[0], this.min[1] + delta[1], this.min[2] + delta[2]};
+		newMax = new float[] { this.max[0], this.max[1], this.max[2]};
 		this.children[6] = new Octree(this, newMin, newMax);
 		
 		// Top-Front-Left
-		newMin = new float[3];
-		newMax = new float[3];
-		newMin[0] = this.min[0];
-		newMin[1] = this.min[1] + delta[1];
-		newMin[2] = this.min[2] + delta[2];
-		newMax[0] = this.min[0] + delta[0];
-		newMax[1] = this.max[1];
-		newMax[2] = this.max[2];
+		newMin = new float[] {this.min[0], this.min[1] + delta[1], this.min[2] + delta[2]};
+		newMax = new float[] {this.min[0] + delta[0], this.max[1], this.max[2]};
 		this.children[7] = new Octree(this, newMin, newMax);
 	}
 	
