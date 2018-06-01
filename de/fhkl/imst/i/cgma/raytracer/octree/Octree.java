@@ -85,7 +85,9 @@ public class Octree
 				{
 					if (isTriangleInsideVoxel(mesh.vertices[mesh.triangles[i][0]],
 											  mesh.vertices[mesh.triangles[i][1]],
-											  mesh.vertices[mesh.triangles[i][2]]))
+											  mesh.vertices[mesh.triangles[i][2]],
+											  mesh.triangleNormals[i],
+											  mesh.triangleAreas[i]))
 					{
 						indices.add(i);
 						continue;
@@ -112,12 +114,13 @@ public class Octree
 				isPointInsideVoxel(scene.max[0], scene.max[1], scene.max[2]));
 	}
 	
-	private boolean isTriangleInsideVoxel(float[] p1, float[] p2, float[] p3)
+	private boolean isTriangleInsideVoxel(float[] p1, float[] p2, float[] p3, float[] n, float a)
 	{
 		return (isPointInsideVoxel(p1) ||
 				isPointInsideVoxel(p2) ||
 				isPointInsideVoxel(p3) ||
-				isTriangleEdgeIntersectingVoxel(p1, p2, p3));
+				isTriangleEdgeIntersectingVoxel(p1, p2, p3) ||
+				isVoxelEdgeIntersectingTriangle(p1, p2, p3, n, a));
 	}
 	
 	private boolean isPointInsideVoxel(float[] p)
@@ -149,13 +152,13 @@ public class Octree
 	private boolean isTriangleEdgeIntersectingFace(float[] p1, float[] p2, float[] p1p2, float[] p1p3, float[] p2p3, float[] n, float[] facePoint)
 	{
 		float[] ip = new float[3];
-		return (((intersects(p1, p1p2, n, facePoint, ip) && (1 >= (ip[0] - p1[0]) / p1p2[0])) ||
-				 (intersects(p1, p1p3, n, facePoint, ip) && (1 >= (ip[0] - p1[0]) / p1p3[0])) ||
-				 (intersects(p2, p2p3, n, facePoint, ip) && (1 >= (ip[0] - p2[0]) / p2p3[0]))) &&
+		return ((isIntersectingInRange(p1, p1p2, n, facePoint, ip) ||
+				 isIntersectingInRange(p1, p1p3, n, facePoint, ip) ||
+				 isIntersectingInRange(p2, p2p3, n, facePoint, ip)) &&
 				isPointInsideVoxel(ip));
 	}
 	
-	private boolean intersects(float[] e, float[] v, float[] n, float[] p, float[] ip)
+	private boolean isIntersectingInRange(float[] e, float[] v, float[] n, float[] p, float[] ip)
 	{
 		float vn = v[0] * n[0] + v[1] * n[1] + v[2] * n[2];
 		if (Math.abs(vn) < 1E-7)
@@ -168,7 +171,65 @@ public class Octree
 		ip[1] = e[1] + t * v[1];
 		ip[2] = e[2] + t * v[2];
 		
-		return true;
+		return 1 >= t;
+	}
+
+	private boolean isVoxelEdgeIntersectingTriangle(float[] p1, float[] p2, float[] p3, float[] n, float a)
+	{
+		float[] bottomBackLeft = {this.min[0], this.min[1], this.min[2]};
+		float[] bottomFrontRight = {this.max[0], this.min[1], this.max[2]};
+		float[] topBackRight = {this.max[0], this.max[1], this.min[2]};
+		float[] topFrontLeft = {this.min[0], this.max[1], this.max[2]};
+		
+		return (isIntersectingTriangle(bottomBackLeft, new float[] {this.max[0] - this.min[0], 0, 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(bottomBackLeft, new float[] {0, this.max[1] - this.min[1], 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(bottomBackLeft, new float[] {0, 0, this.max[2] - this.min[2]}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(bottomFrontRight, new float[] {this.min[0] - this.max[0], 0, 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(bottomFrontRight, new float[] {0, this.max[1] - this.min[1], 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(bottomFrontRight, new float[] {0, 0, this.min[2] - this.max[2]}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(topBackRight, new float[] {this.min[0] - this.max[0], 0, 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(topBackRight, new float[] {0, this.min[1] - this.max[1], 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(topBackRight, new float[] {0, 0, this.max[2] - this.min[2]}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(topFrontLeft, new float[] {this.max[0] - this.min[0], 0, 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(topFrontLeft, new float[] {0, this.min[1] - this.max[1], 0}, p1, p2, p3, n, a) ||
+				isIntersectingTriangle(topFrontLeft, new float[] {0, 0, this.min[2] - this.max[2]}, p1, p2, p3, n, a));
+	}
+	
+	private boolean isIntersectingTriangle(float[] e, float[] v, float[] p1, float[] p2, float[] p3, float[] n, float a)
+	{
+		float[] ip = new float[3];
+		return (isIntersectingInRange(e, v, n, p1, ip) && isIntersectionInsideTriangle(ip, p1, p2, p3, a));
+	}
+	
+	private boolean isIntersectionInsideTriangle(float[] ip, float[] p1, float[] p2, float[] p3, float a)
+	{
+		float calculatedArea = 0;
+		calculatedArea += calculateArea(p1, p2, ip);
+		calculatedArea += calculateArea(ip, p2, p3);
+		calculatedArea += calculateArea(p1, ip, p3);
+
+		return (1E-5 > Math.abs(a - calculatedArea));
+	}
+	
+	private float calculateArea(float[] p1, float[] p2, float[] p3) {
+		// a = Vi2-Vi1, b = Vi3-Vi1
+		float ax, ay, az, bx, by, bz;
+		ax = p2[0] - p1[0];
+		ay = p2[1] - p1[1];
+		az = p2[2] - p1[2];
+
+		bx = p3[0] - p1[0];
+		by = p3[1] - p1[1];
+		bz = p3[2] - p1[2];
+
+		// n = a x b
+		float[] n = new float[3];
+		n[0] = ay * bz - az * by;
+		n[1] = -(ax * bz - az * bx);
+		n[2] = ax * by - ay * bx;
+
+		// normalize n, calculate and return area of triangle
+		return (float)Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) / 2;
 	}
 	
 	private void generateChildren()
