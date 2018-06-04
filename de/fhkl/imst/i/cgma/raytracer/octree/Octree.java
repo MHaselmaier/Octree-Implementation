@@ -565,10 +565,9 @@ public class Octree
 	private boolean isTriangleEdgeIntersectingFace(float[] p1, float[] p2, float[] p1p2, float[] p1p3, float[] p2p3, float[] n, float[] facePoint)
 	{
 		float[] ip = new float[3];
-		return ((isIntersectingInRange(p1, p1p2, n, facePoint, ip) ||
-				 isIntersectingInRange(p1, p1p3, n, facePoint, ip) ||
-				 isIntersectingInRange(p2, p2p3, n, facePoint, ip)) &&
-				isPointInsideVoxel(ip));
+		return ((isIntersectingInRange(p1, p1p2, n, facePoint, ip) && isPointInsideVoxel(ip)) ||
+				(isIntersectingInRange(p1, p1p3, n, facePoint, ip) && isPointInsideVoxel(ip))||
+				(isIntersectingInRange(p2, p2p3, n, facePoint, ip) && isPointInsideVoxel(ip)));
 	}
 	
 	private boolean isIntersecting(float[] e, float[] v, float[] n, float[] p, float[] ip)
