@@ -54,7 +54,35 @@ public class Octree
 		generateChildren();
 	}
 	
-	private Color traceRayInsideVoxelAndGetColor(float[] entryPoint, float[] ray)
+	public Color traceRay(float[] entryPoint, float[] ray)
+	{
+		if (null == this.children) return traceRayInsideVoxel(entryPoint, ray);
+		
+		Octree next;
+		Color color;
+		while (null != entryPoint)
+		{
+			next = findNextVoxel(entryPoint, ray);
+			color = next.traceRay(entryPoint, ray);
+			if (null != color)
+			{
+				return color;
+			}
+			else
+			{
+				entryPoint = findExitPoint(next, entryPoint, ray);
+			}
+		}
+		
+		return null;
+	}
+	
+	private float[] findExitPoint(Octree next, float[] entryPoint, float[] ray)
+	{
+		
+	}
+	
+	private Color traceRayInsideVoxel(float[] entryPoint, float[] ray)
 	{
 		if (null != this.children) return null;
 		
@@ -506,7 +534,7 @@ public class Octree
 						continue;
 					}					
 				}
-				if (indices.size() > 0)
+				if (0 < indices.size())
 				{
 					containedObjects.put(mesh, indices.toArray(new Integer[0]));
 				}
@@ -588,19 +616,20 @@ public class Octree
 	
 	private boolean isIntersectingInRange(float[] e, float[] v, float[] n, float[] p, float[] ip)
 	{
-		isIntersecting(e, v, n, p, ip);
-		
-		if (0 < Math.abs(v[0]))
+		if (isIntersecting(e, v, n, p, ip))
 		{
-			return (1 >= (ip[0] - e[0]) / v[0]);
-		}
-		if (0 < Math.abs(v[1]))
-		{
-			return (1 >= (ip[1] - e[1]) / v[1]);
-		}
-		if (0 < Math.abs(v[2]))
-		{
-			return (1 >= (ip[2] - e[2]) / v[2]);
+			if (0 < Math.abs(v[0]))
+			{
+				return (1 >= (ip[0] - e[0]) / v[0]);
+			}
+			if (0 < Math.abs(v[1]))
+			{
+				return (1 >= (ip[1] - e[1]) / v[1]);
+			}
+			if (0 < Math.abs(v[2]))
+			{
+				return (1 >= (ip[2] - e[2]) / v[2]);
+			}
 		}
 		
 		return false;
@@ -664,10 +693,7 @@ public class Octree
 	
 	private void generateChildren()
 	{
-		if (countContainedTriangles() <= Octree.MIN_TRIANGLES)
-		{
-			return;
-		}
+		if (Octree.MIN_TRIANGLES >= countContainedTriangles()) return;
 		
 		float[] delta = new float[3];
 		delta[0] = (this.max[0] - this.min[0]) / 2f;
