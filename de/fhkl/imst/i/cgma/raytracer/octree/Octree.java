@@ -58,11 +58,11 @@ public class Octree
 	{
 		if (null == this.children) return traceRayInsideVoxel(entryPoint, ray);
 		
-		Octree next;
+		Octree next = this;
 		Color color;
 		while (null != entryPoint)
 		{
-			next = findNextVoxel(entryPoint, ray);
+			next = findNextVoxel(entryPoint, ray, next);
 			color = next.traceRay(entryPoint, ray);
 			if (null != color)
 			{
@@ -75,6 +75,85 @@ public class Octree
 		}
 		
 		return null;
+	}
+	
+	private Octree findNextVoxel(float[] entryPoint, float[] ray, Octree current)
+	{
+		float minDistance = Float.MAX_VALUE;
+		float[] ip = new float[3];
+		for (Octree child: this.children)
+		{
+			if (child == current) continue;
+
+			if (isIntersecting(entryPoint, ray, VOXEL_RIGHT_FACE_NORMAL, child.max, ip))
+			{
+				float distance = calculateDistance(entryPoint, ray, ip);
+				if (minDistance > distance)
+				{
+					minDistance	= distance;
+				}
+			}
+			if (isIntersecting(entryPoint, ray, VOXEL_LEFT_FACE_NORMAL, child.min, ip))
+			{
+				float distance = calculateDistance(entryPoint, ray, ip);
+				if (minDistance > distance)
+				{
+					minDistance	= distance;
+				}
+			}
+			if (isIntersecting(entryPoint, ray, VOXEL_TOP_FACE_NORMAL, child.max, ip))
+			{
+				float distance = calculateDistance(entryPoint, ray, ip);
+				if (minDistance > distance)
+				{
+					minDistance	= distance;
+				}
+			}
+			if (isIntersecting(entryPoint, ray, VOXEL_BOTTOM_FACE_NORMAL, child.min, ip))
+			{
+				float distance = calculateDistance(entryPoint, ray, ip);
+				if (minDistance > distance)
+				{
+					minDistance	= distance;
+				}
+			}
+			if (isIntersecting(entryPoint, ray, VOXEL_FRONT_FACE_NORMAL, child.max, ip))
+			{
+				float distance = calculateDistance(entryPoint, ray, ip);
+				if (minDistance > distance)
+				{
+					minDistance	= distance;
+				}
+			}
+			if (isIntersecting(entryPoint, ray, VOXEL_BACK_FACE_NORMAL, child.min, ip))
+			{
+				float distance = calculateDistance(entryPoint, ray, ip);
+				if (minDistance > distance)
+				{
+					minDistance	= distance;
+				}
+			}
+		}
+		
+		return this.parent.findNextVoxel(entryPoint, ray, current);
+	}
+	
+	private float calculateDistance(float[] e, float[] v, float[] ip)
+	{
+		float t = Float.NaN;
+		if (0 < Math.abs(v[0]))
+		{
+			t = (ip[0] - e[0]) / v[0];
+		}
+		if (0 < Math.abs(v[1]))
+		{
+			t = (ip[1] - e[1]) / v[1];
+		}
+		if (0 < Math.abs(v[2]))
+		{
+			t = (ip[2] - e[2]) / v[2];
+		}
+		return t;
 	}
 	
 	private float[] findExitPoint(Octree next, float[] entryPoint, float[] ray)
