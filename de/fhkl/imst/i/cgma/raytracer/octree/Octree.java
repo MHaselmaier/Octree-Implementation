@@ -618,18 +618,20 @@ public class Octree
 	{
 		if (isIntersecting(e, v, n, p, ip))
 		{
+			float t = 0;
 			if (0 < Math.abs(v[0]))
 			{
-				return (1 >= (ip[0] - e[0]) / v[0]);
+				t = (ip[0] - e[0]) / v[0];
 			}
 			if (0 < Math.abs(v[1]))
 			{
-				return (1 >= (ip[1] - e[1]) / v[1]);
+				t = (ip[1] - e[1]) / v[1];
 			}
 			if (0 < Math.abs(v[2]))
 			{
-				return (1 >= (ip[2] - e[2]) / v[2]);
+				t = (ip[2] - e[2]) / v[2];
 			}
+			return (1 >= t && 0 <= t);
 		}
 		
 		return false;
