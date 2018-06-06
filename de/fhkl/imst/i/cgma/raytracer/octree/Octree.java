@@ -1,11 +1,7 @@
 package de.fhkl.imst.i.cgma.raytracer.octree;
 
 import java.awt.Color;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.Vector;
+import java.util.*;
 
 import de.fhkl.imst.i.cgma.raytracer.file.I_Sphere;
 import de.fhkl.imst.i.cgma.raytracer.file.RT_Object;
@@ -13,47 +9,46 @@ import de.fhkl.imst.i.cgma.raytracer.file.T_Mesh;
 
 public class Octree
 {
-	// one hardcoded point light as a minimal solution :-(
-	private float[] Ia = { 0.25f, 0.25f, 0.25f }; // ambient light color
-	private float[] Ids = { 1.0f, 1.0f, 1.0f }; // diffuse and specular light
-	// color
-	private float[] ICenter = { 4.0f, 4.0f, 2.0f }; // center of point light
-	
-	private static final int MIN_TRIANGLES = 10;
-	
+	private static final int MINIMUM_NUMBER_OF_TRIANGLES = 10;
 	private static final float[] VOXEL_RIGHT_FACE_NORMAL = {1, 0, 0};
 	private static final float[] VOXEL_LEFT_FACE_NORMAL = {-1, 0, 0};
 	private static final float[] VOXEL_TOP_FACE_NORMAL = {0, 1, 0};
 	private static final float[] VOXEL_BOTTOM_FACE_NORMAL = {0, -1, 0};
 	private static final float[] VOXEL_FRONT_FACE_NORMAL = {0, 0, 1};
 	private static final float[] VOXEL_BACK_FACE_NORMAL = {0, 0, -1};
-	
+
+	private float[] ambientLightColor = { 0.25f, 0.25f, 0.25f };
+	private float[] specularLight = { 1.0f, 1.0f, 1.0f };
+	private float[] centerOfPointLight = { 4.0f, 4.0f, 2.0f };
+
 	private float[] min;
 	private float[] max;
-	
 	public int depth = 0;
 	private Octree parent;
 	private Octree[] children;
 	private Map<RT_Object, Integer[]> objects;
-	
-	private Octree(Map<RT_Object, Integer[]> objects, float[] min, float[] max)
+
+	private Octree(Map<RT_Object, Integer[]> objects, Octree parent, float[] min, float[] max)
 	{
-		this.min = min;
-		this.max = max;		
-		this.parent = null;
 		this.objects = objects;
-		generateChildren();
-	}
-	
-	private Octree(Octree parent, float[] min, float[] max)
-	{
+		this.parent = parent;
 		this.min = min;
 		this.max = max;
-		this.parent = parent;
-		this.objects = findContainedObjects();
 		generateChildren();
 	}
-	
+
+	protected Octree(Map<RT_Object, Integer[]> objects, float[] min, float[] max)
+	{
+		this(objects, null, min,max);
+	}
+
+	protected Octree(Octree parent, float[] min, float[] max)
+	{
+		this(findContainedObjects(), parent, min, max);
+	}
+
+
+
 	public Color traceRay(float[] entryPoint, float[] ray)
 	{
 		if (null == this.children) return traceRayInsideVoxel(entryPoint, ray);
@@ -76,10 +71,14 @@ public class Octree
 		
 		return null;
 	}
-	
+
+	/*
+	 * TODO: Implement
+	 *
+	 */
 	private float[] findExitPoint(Octree next, float[] entryPoint, float[] ray)
 	{
-		
+		return null;
 	}
 	
 	private Color traceRayInsideVoxel(float[] entryPoint, float[] ray)
@@ -117,7 +116,7 @@ public class Octree
 				sphere = (I_Sphere) scene;
 
 				// no bounding box hit? -> next object
-				if (!bboxHit(sphere, entryPoint, ray))
+				if (!boundingBoxHit(sphere, entryPoint, ray))
 					continue;
 
 				// ray intersection uses quadratic equation
@@ -176,7 +175,7 @@ public class Octree
 				mesh = (T_Mesh)scene;
 				
 				// no bounding box hit? -> next object
-				if (!bboxHit(mesh, entryPoint, ray))
+				if (!boundingBoxHit(mesh, entryPoint, ray))
 					continue;
 				
 				float t;
@@ -291,9 +290,9 @@ public class Octree
 		if (minObjectsKey == null) return null;
 
 		// light vector at the intersection point
-		l[0] = ICenter[0] - minIP[0];
-		l[1] = ICenter[1] - minIP[1];
-		l[2] = ICenter[2] - minIP[2];
+		l[0] = centerOfPointLight[0] - minIP[0];
+		l[1] = centerOfPointLight[1] - minIP[1];
+		l[2] = centerOfPointLight[2] - minIP[2];
 		normalize(l);
 
 		// decide which shading model will be applied
@@ -313,7 +312,7 @@ public class Octree
 			case 'F':
 				// // illumination can be calculated here
 				// // this is a variant between flat und phong shading
-				// return phongIlluminate(minMaterial, minMaterialN, l, minN, v, Ia, Ids);
+				// return phongIlluminate(minMaterial, minMaterialN, l, minN, v, ambientLightColor, specularLight);
 
 				// lookup triangle color of triangle hit
 				return new Color(mesh.triangleColors[minIndex][0],
@@ -343,7 +342,7 @@ public class Octree
 		return null;
 	}
 	
-	private boolean bboxHit(RT_Object object, float[] entryPoint, float[] ray)
+	private boolean boundingBoxHit(RT_Object object, float[] entryPoint, float[] ray)
 	{
 		float t;
 		float ip[] = new float[3];
@@ -445,40 +444,38 @@ public class Octree
 	private Color phongIlluminate(float[] material, float materialN, float[] l, float[] n, float[] v)
 	{
 		float ir = 0, ig = 0, ib = 0; // reflected intensity, rgb channels
-		float[] r = new float[3]; // reflection vector
-		float ln, rv; // scalar products <l,n> and <r,v>
+		float[] reflectionVector = new float[3];
+		float scalar_l_n, scalar_r_v;
+		scalar_l_n = l[0] * n[0] + l[1] * n[1] + l[2] * n[2];
 
-		// <l,n>
-		ln = l[0] * n[0] + l[1] * n[1] + l[2] * n[2];
+		// ambient component, ambientLightColor*ra
+		ir += this.ambientLightColor[0] * material[0];
+		ig += this.ambientLightColor[1] * material[1];
+		ib += this.ambientLightColor[2] * material[2];
 
-		// ambient component, Ia*ra
-		ir += this.Ia[0] * material[0];
-		ig += this.Ia[1] * material[1];
-		ib += this.Ia[2] * material[2];
-
-		// diffuse component, Ids*rd*<l,n>
-		if (ln > 0)
+		// diffuse component, specularLight*rd*<l,n>
+		if (scalar_l_n > 0)
 		{
-			ir += this.Ids[0] * material[3] * ln;
-			ig += this.Ids[1] * material[4] * ln;
-			ib += this.Ids[2] * material[5] * ln;
+			ir += this.specularLight[0] * material[3] * scalar_l_n;
+			ig += this.specularLight[1] * material[4] * scalar_l_n;
+			ib += this.specularLight[2] * material[5] * scalar_l_n;
 
 			// reflection vector r=2*<l,n>*n-l
-			r[0] = 2f * ln * n[0] - l[0];
-			r[1] = 2f * ln * n[1] - l[1];
-			r[2] = 2f * ln * n[2] - l[2];
-			normalize(r);
+			reflectionVector[0] = 2f * scalar_l_n * n[0] - l[0];
+			reflectionVector[1] = 2f * scalar_l_n * n[1] - l[1];
+			reflectionVector[2] = 2f * scalar_l_n * n[2] - l[2];
+			normalize(reflectionVector);
 
 			// <r,v>
-			rv = r[0] * v[0] + r[1] * v[1] + r[2] * v[2];
+			scalar_r_v = reflectionVector[0] * v[0] + reflectionVector[1] * v[1] + reflectionVector[2] * v[2];
 
-			// specular component, Ids*rs*<r,v>^n
-			if (rv > 0)
+			// specular component, specularLight*rs*<r,v>^n
+			if (scalar_r_v > 0)
 			{
-				float pow = (float)Math.pow(rv, materialN);
-				ir += this.Ids[0] * material[6] * pow;
-				ig += this.Ids[1] * material[7] * pow;
-				ib += this.Ids[2] * material[8] * pow;
+				float pow = (float)Math.pow(scalar_r_v, materialN);
+				ir += this.specularLight[0] * material[6] * pow;
+				ig += this.specularLight[1] * material[7] * pow;
+				ib += this.specularLight[2] * material[8] * pow;
 			}
 		}
 
@@ -695,7 +692,7 @@ public class Octree
 	
 	private void generateChildren()
 	{
-		if (Octree.MIN_TRIANGLES >= countContainedTriangles()) return;
+		if (Octree.MINIMUM_NUMBER_OF_TRIANGLES >= countContainedTriangles()) return;
 		
 		float[] delta = new float[3];
 		delta[0] = (this.max[0] - this.min[0]) / 2f;
@@ -758,53 +755,12 @@ public class Octree
 		}
 		return containedTriangles;
 	}
-	
-	public static Octree generate(Vector<RT_Object> objects)
+
+	/*
+	 * TODO: Implement
+	 */
+	public Octree findNextVoxel(float[]a, float[]b)
 	{
-		float[] min = new float[3];
-		float[] max = new float[3];
-		calculateBoundingBox(objects, min, max);
-		Map<RT_Object, Integer[]> containedObjects = generateObjectTriangleIndexMap(objects);
-		return new Octree(containedObjects, min, max);
-	}
-	
-	private static void calculateBoundingBox(Vector<RT_Object> objects, float[] min, float[] max)
-	{
-		min[0] = Float.POSITIVE_INFINITY;
-		min[1] = Float.POSITIVE_INFINITY;
-		min[2] = Float.POSITIVE_INFINITY;
-		max[0] = Float.NEGATIVE_INFINITY;
-		max[1] = Float.NEGATIVE_INFINITY;
-		max[2] = Float.NEGATIVE_INFINITY;
-		
-		for (RT_Object object: objects)
-		{
-			if (min[0] > object.min[0]) min[0] = object.min[0];
-			if (min[1] > object.min[1]) min[1] = object.min[1];
-			if (min[2] > object.min[2]) min[2] = object.min[2];
-			
-			if (max[0] < object.max[0]) max[0] = object.max[0];
-			if (max[1] < object.max[1]) max[1] = object.max[1];
-			if (max[2] < object.max[2]) max[2] = object.max[2];
-		}
-	}
-	
-	private static Map<RT_Object, Integer[]> generateObjectTriangleIndexMap(Vector<RT_Object> objects)
-	{
-		Map<RT_Object, Integer[]> containedObjects = new HashMap<>(); 
-		for (RT_Object object: objects)
-		{
-			Integer[] indices = new Integer[1];
-			if (object instanceof T_Mesh)
-			{
-				indices = new Integer[((T_Mesh)object).triangles.length];
-			}
-			for (int i = 0; indices.length > i; ++i)
-			{
-				indices[i] = i;
-			}
-			containedObjects.put(object, indices);
-		}
-		return containedObjects;
+		return null;
 	}
 }
