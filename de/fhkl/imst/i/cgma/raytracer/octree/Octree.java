@@ -16,8 +16,7 @@ public class Octree {
 	// one hardcoded point light as a minimal solution :-(
 
 	private float[] Ia = { 0.25f, 0.25f, 0.25f }; // ambient light color
-	private float[] Ids = { 1.0f, 1.0f, 1.0f }; // diffuse and specular light
-	// color
+	private float[] Ids = { 1.0f, 1.0f, 1.0f }; // diffuse and specular light color
 	private float[] ICenter = { 4.0f, 4.0f, 2.0f }; // center of point light
 
 	private static final int MIN_TRIANGLES = 30;
@@ -119,10 +118,14 @@ public class Octree {
 			}
 		}
 
-		return (Float.MAX_VALUE > minDistance
-				? new float[] { eye[0] + ray[0] * minDistance, eye[1] + ray[1] * minDistance,
-						eye[2] + ray[2] * minDistance }
-				: null);
+		if (Float.MAX_VALUE > minDistance) {
+			for (int i = 0; ip.length > i; ++i) {
+				ip[i] = eye[i] + ray[i] * minDistance;
+			}
+			return ip;
+		}
+
+		return null;
 	}
 
 	private Octree findNextVoxel(float[] entryPoint, float[] ray) {
@@ -204,28 +207,18 @@ public class Octree {
 		}
 
 		float[] ip = new float[3];
-		if (isIntersecting(entryPoint, ray, VOXEL_RIGHT_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip)) {
-			return ip;
-		}
-		if (isIntersecting(entryPoint, ray, VOXEL_LEFT_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip)) {
-			return ip;
-		}
-		if (isIntersecting(entryPoint, ray, VOXEL_TOP_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip)) {
-			return ip;
-		}
-		if (isIntersecting(entryPoint, ray, VOXEL_BOTTOM_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip)) {
-			return ip;
-		}
-		if (isIntersecting(entryPoint, ray, VOXEL_FRONT_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip)) {
-			return ip;
-		}
-		if (isIntersecting(entryPoint, ray, VOXEL_BACK_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip)) {
+		if ((isIntersecting(entryPoint, ray, VOXEL_RIGHT_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
+				&& 0 < calculateDistance(entryPoint, ray, ip))
+				|| (isIntersecting(entryPoint, ray, VOXEL_LEFT_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
+						&& 0 < calculateDistance(entryPoint, ray, ip))
+				|| (isIntersecting(entryPoint, ray, VOXEL_TOP_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
+						&& 0 < calculateDistance(entryPoint, ray, ip))
+				|| (isIntersecting(entryPoint, ray, VOXEL_BOTTOM_FACE_NORMAL, next.min, ip)
+						&& next.isPointInsideVoxel(ip) && 0 < calculateDistance(entryPoint, ray, ip))
+				|| (isIntersecting(entryPoint, ray, VOXEL_FRONT_FACE_NORMAL, next.max, ip)
+						&& next.isPointInsideVoxel(ip) && 0 < calculateDistance(entryPoint, ray, ip))
+				|| (isIntersecting(entryPoint, ray, VOXEL_BACK_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
+						&& 0 < calculateDistance(entryPoint, ray, ip))) {
 			return ip;
 		}
 
