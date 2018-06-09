@@ -55,141 +55,78 @@ public class Octree {
 	}
 
 	public Color traceRay(float[] eye, float[] ray) {
-		float[] entryPoint = findEntryPoint(eye, ray);
-		Octree current = this;
-
-		while (null != entryPoint) {
-			while (null != current.children) {
-				current = current.findNextVoxel(entryPoint, ray);
+		if (null == this.children)
+			return this.traceRayInsideVoxel(eye, ray);
+		
+		Color color = null;
+		float smallestT = 0;
+		do
+		{
+			Octree voxel = null;
+			float nextT = Float.POSITIVE_INFINITY;
+			for (int i = 0; this.children.length > i; ++i)
+			{
+				float t = this.children[i].calculateIntersectionPointRayFactor(eye, ray);
+				if (nextT > t && smallestT < t)
+				{
+					nextT = t;
+					voxel = this.children[i];
+				}
 			}
-
-			Color color = current.traceRayInsideVoxel(entryPoint, ray);
-			if (null != color) {
-				return color;
+			smallestT = nextT;
+			if (null == voxel)
+			{
+				return null;
 			}
-
-			float[] newEntryPoint;
-			while (null == (newEntryPoint = findExitPoint(current, entryPoint, ray)) && null != current.parent) {
-				current = current.parent;
-			}
-			entryPoint = newEntryPoint;
-		}
-
-		return null;
+			color = voxel.traceRay(eye, ray);
+		} while (null == color);
+		return color;
 	}
 
-	private float[] findEntryPoint(float[] eye, float[] ray) {
-		float minDistance = Float.MAX_VALUE;
+	private float calculateIntersectionPointRayFactor(float[] eye, float[] ray) {
+		float minFactor = Float.POSITIVE_INFINITY;
 		float[] ip = new float[3];
-		if (isIntersecting(eye, ray, VOXEL_RIGHT_FACE_NORMAL, max, ip) && isPointInsideVoxel(ip)) {
-			float distance = calculateDistance(eye, ray, ip);
-			if (0 < distance && minDistance > distance) {
-				minDistance = distance;
+		if (isIntersecting(eye, ray, VOXEL_RIGHT_FACE_NORMAL, this.max, ip) && isPointInsideVoxel(ip)) {
+			float factor = calculateIntersectionPointFactor(eye, ray, ip);
+			if (0 < factor && minFactor > factor) {
+				minFactor = factor;
 			}
 		}
-		if (isIntersecting(eye, ray, VOXEL_LEFT_FACE_NORMAL, min, ip) && isPointInsideVoxel(ip)) {
-			float distance = calculateDistance(eye, ray, ip);
-			if (0 < distance && minDistance > distance) {
-				minDistance = distance;
+		if (isIntersecting(eye, ray, VOXEL_LEFT_FACE_NORMAL, this.min, ip) && isPointInsideVoxel(ip)) {
+			float factor = calculateIntersectionPointFactor(eye, ray, ip);
+			if (0 < factor && minFactor > factor) {
+				minFactor = factor;
 			}
 		}
-		if (isIntersecting(eye, ray, VOXEL_TOP_FACE_NORMAL, max, ip) && isPointInsideVoxel(ip)) {
-			float distance = calculateDistance(eye, ray, ip);
-			if (0 < distance && minDistance > distance) {
-				minDistance = distance;
+		if (isIntersecting(eye, ray, VOXEL_TOP_FACE_NORMAL, this.max, ip) && isPointInsideVoxel(ip)) {
+			float factor = calculateIntersectionPointFactor(eye, ray, ip);
+			if (0 < factor && minFactor > factor) {
+				minFactor = factor;
 			}
 		}
-		if (isIntersecting(eye, ray, VOXEL_BOTTOM_FACE_NORMAL, min, ip) && isPointInsideVoxel(ip)) {
-			float distance = calculateDistance(eye, ray, ip);
-			if (0 < distance && minDistance > distance) {
-				minDistance = distance;
+		if (isIntersecting(eye, ray, VOXEL_BOTTOM_FACE_NORMAL, this.min, ip) && isPointInsideVoxel(ip)) {
+			float factor = calculateIntersectionPointFactor(eye, ray, ip);
+			if (0 < factor && minFactor > factor) {
+				minFactor = factor;
 			}
 		}
-		if (isIntersecting(eye, ray, VOXEL_FRONT_FACE_NORMAL, max, ip) && isPointInsideVoxel(ip)) {
-			float distance = calculateDistance(eye, ray, ip);
-			if (0 < distance && minDistance > distance) {
-				minDistance = distance;
+		if (isIntersecting(eye, ray, VOXEL_FRONT_FACE_NORMAL, this.max, ip) && isPointInsideVoxel(ip)) {
+			float factor = calculateIntersectionPointFactor(eye, ray, ip);
+			if (0 < factor && minFactor > factor) {
+				minFactor = factor;
 			}
 		}
-		if (isIntersecting(eye, ray, VOXEL_BACK_FACE_NORMAL, min, ip) && isPointInsideVoxel(ip)) {
-			float distance = calculateDistance(eye, ray, ip);
-			if (0 < distance && minDistance > distance) {
-				minDistance = distance;
+		if (isIntersecting(eye, ray, VOXEL_BACK_FACE_NORMAL, this.min, ip) && isPointInsideVoxel(ip)) {
+			float factor = calculateIntersectionPointFactor(eye, ray, ip);
+			if (0 < factor && minFactor > factor) {
+				minFactor = factor;
 			}
 		}
 
-		if (Float.MAX_VALUE > minDistance) {
-			for (int i = 0; ip.length > i; ++i) {
-				ip[i] = eye[i] + ray[i] * minDistance;
-			}
-			return ip;
-		}
-
-		return null;
+		return minFactor;
 	}
 
-	private Octree findNextVoxel(float[] entryPoint, float[] ray) {
-		if (null == this.children) {
-			return null;
-		}
-
-		Octree minChild = null;
-		float minDistance = Float.MAX_VALUE;
-		float[] ip = new float[3];
-		for (Octree child : this.children) {
-			if (isIntersecting(entryPoint, ray, VOXEL_RIGHT_FACE_NORMAL, child.max, ip)
-					&& child.isPointInsideVoxel(ip)) {
-				float distance = calculateDistance(entryPoint, ray, ip);
-				if (0 <= distance && minDistance > distance) {
-					minChild = child;
-					minDistance = distance;
-				}
-			}
-			if (isIntersecting(entryPoint, ray, VOXEL_LEFT_FACE_NORMAL, child.min, ip)
-					&& child.isPointInsideVoxel(ip)) {
-				float distance = calculateDistance(entryPoint, ray, ip);
-				if (0 <= distance && minDistance > distance) {
-					minChild = child;
-					minDistance = distance;
-				}
-			}
-			if (isIntersecting(entryPoint, ray, VOXEL_TOP_FACE_NORMAL, child.max, ip) && child.isPointInsideVoxel(ip)) {
-				float distance = calculateDistance(entryPoint, ray, ip);
-				if (0 <= distance && minDistance > distance) {
-					minChild = child;
-					minDistance = distance;
-				}
-			}
-			if (isIntersecting(entryPoint, ray, VOXEL_BOTTOM_FACE_NORMAL, child.min, ip)
-					&& child.isPointInsideVoxel(ip)) {
-				float distance = calculateDistance(entryPoint, ray, ip);
-				if (0 <= distance && minDistance > distance) {
-					minChild = child;
-					minDistance = distance;
-				}
-			}
-			if (isIntersecting(entryPoint, ray, VOXEL_FRONT_FACE_NORMAL, child.max, ip)
-					&& child.isPointInsideVoxel(ip)) {
-				float distance = calculateDistance(entryPoint, ray, ip);
-				if (0 <= distance && minDistance > distance) {
-					minChild = child;
-					minDistance = distance;
-				}
-			}
-			if (isIntersecting(entryPoint, ray, VOXEL_BACK_FACE_NORMAL, child.min, ip)
-					&& child.isPointInsideVoxel(ip)) {
-				float distance = calculateDistance(entryPoint, ray, ip);
-				if (0 <= distance && minDistance > distance) {
-					minChild = child;
-					minDistance = distance;
-				}
-			}
-		}
-
-		return minChild;
-	}
-
-	private float calculateDistance(float[] e, float[] v, float[] ip) {
+	private float calculateIntersectionPointFactor(float[] e, float[] v, float[] ip) {
 		float t = Float.NaN;
 		if (0 < Math.abs(v[0])) {
 			t = (ip[0] - e[0]) / v[0];
@@ -201,36 +138,10 @@ public class Octree {
 		return t;
 	}
 
-	private float[] findExitPoint(Octree next, float[] entryPoint, float[] ray) {
-		if (null == next) {
-			return null;
-		}
-
-		float[] ip = new float[3];
-		if ((isIntersecting(entryPoint, ray, VOXEL_RIGHT_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
-				&& 0 < calculateDistance(entryPoint, ray, ip))
-				|| (isIntersecting(entryPoint, ray, VOXEL_LEFT_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
-						&& 0 < calculateDistance(entryPoint, ray, ip))
-				|| (isIntersecting(entryPoint, ray, VOXEL_TOP_FACE_NORMAL, next.max, ip) && next.isPointInsideVoxel(ip)
-						&& 0 < calculateDistance(entryPoint, ray, ip))
-				|| (isIntersecting(entryPoint, ray, VOXEL_BOTTOM_FACE_NORMAL, next.min, ip)
-						&& next.isPointInsideVoxel(ip) && 0 < calculateDistance(entryPoint, ray, ip))
-				|| (isIntersecting(entryPoint, ray, VOXEL_FRONT_FACE_NORMAL, next.max, ip)
-						&& next.isPointInsideVoxel(ip) && 0 < calculateDistance(entryPoint, ray, ip))
-				|| (isIntersecting(entryPoint, ray, VOXEL_BACK_FACE_NORMAL, next.min, ip) && next.isPointInsideVoxel(ip)
-						&& 0 < calculateDistance(entryPoint, ray, ip))) {
-			return ip;
-		}
-
-		return null;
-	}
-
 	private Color traceRayInsideVoxel(float[] entryPoint, float[] ray) {
 		if (null != this.children) {
 			return null;
 		}
-
-		entryPoint = new float[3];
 
 		float minT = Float.MAX_VALUE;
 		RT_Object minObjectsKey = null;
@@ -622,12 +533,12 @@ public class Octree {
 	}
 
 	private void goDeeper() {
-		++depth;
-		if (null != this.parent) {
-			this.parent.goDeeper();
-		} else {
-			totalDepth = depth;
+		Octree current = this;
+		while (null != current.parent)
+		{
+			current = current.parent;
 		}
+		current.depth++;
 	}
 
 	private Map<RT_Object, Integer[]> findContainedObjects() {
