@@ -179,11 +179,7 @@ public class Octree
 				// ob es innerhalb des Voxels liegt.
 				for (int i = 0; mesh.triangles.length > i; ++i)
 				{
-					if (isTriangleContained(mesh.vertices[mesh.triangles[i][0]],
-											  mesh.vertices[mesh.triangles[i][1]],
-											  mesh.vertices[mesh.triangles[i][2]],
-											  mesh.triangleNormals[i],
-											  mesh.triangleAreas[i]))
+					if (isTriangleContained(new Triangle(mesh, i)))
 					{
 						indices.add(i);
 					}
@@ -236,13 +232,13 @@ public class Octree
 				 (firstMin[2] <= secondMin[2] && firstMax[2] >= secondMax[2])));
 	}
 	
-	private boolean isTriangleContained(float[] firstPoint, float[] secondPoint, float[] thirdPoint, float[] normal, float area)
+	private boolean isTriangleContained(Triangle triangle)
 	{
-		return (Octree.isPointInsideBox(firstPoint, this.min, this.max) ||
-				Octree.isPointInsideBox(secondPoint, this.min, this.max) ||
-				Octree.isPointInsideBox(thirdPoint, this.min, this.max) ||
-				isTriangleEdgeIntersectingVoxel(firstPoint, secondPoint, thirdPoint) ||
-				isVoxelEdgeIntersectingTriangle(firstPoint, secondPoint, thirdPoint, normal, area));
+		return (Octree.isPointInsideBox(triangle.firstPoint, this.min, this.max) ||
+				Octree.isPointInsideBox(triangle.secondPoint, this.min, this.max) ||
+				Octree.isPointInsideBox(triangle.thirdPoint, this.min, this.max) ||
+				isTriangleEdgeIntersectingVoxel(triangle) ||
+				isVoxelEdgeIntersectingTriangle(triangle));
 	}
 	
 	private static boolean isPointInsideBox(float[] point, float[] min, float[] max)
@@ -250,18 +246,24 @@ public class Octree
 		return Octree.isPointInsideBox(point[0], point[1], point[2], min, max);
 	}
 	
-	private boolean isTriangleEdgeIntersectingVoxel(float[] firstPoint, float[] secondPoint, float[] thridPoint)
+	private boolean isTriangleEdgeIntersectingVoxel(Triangle triangle)
 	{
-		float[] p1p2 = { secondPoint[0] - firstPoint[0], secondPoint[1] - firstPoint[1], secondPoint[2] - firstPoint[2] };
-		float[] p1p3 = { thridPoint[0] - firstPoint[0], thridPoint[1] - firstPoint[1], thridPoint[2] - firstPoint[2] };
-		float[] p2p3 = { thridPoint[0] - secondPoint[0], thridPoint[1] - secondPoint[1], thridPoint[2] - secondPoint[2] };
+		float[] p1p2 = { triangle.secondPoint[0] - triangle.firstPoint[0],
+						 triangle.secondPoint[1] - triangle.firstPoint[1],
+						 triangle.secondPoint[2] - triangle.firstPoint[2] };
+		float[] p1p3 = { triangle.thirdPoint[0] - triangle.firstPoint[0],
+						 triangle.thirdPoint[1] - triangle.firstPoint[1],
+						 triangle.thirdPoint[2] - triangle.firstPoint[2] };
+		float[] p2p3 = { triangle.thirdPoint[0] - triangle.secondPoint[0],
+						 triangle.thirdPoint[1] - triangle.secondPoint[1],
+						 triangle.thirdPoint[2] - triangle.secondPoint[2] };
 
-		return (isTriangleEdgeIntersectingFace(firstPoint, secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_RIGHT_FACE_NORMAL, this.max) ||
-				isTriangleEdgeIntersectingFace(firstPoint, secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_LEFT_FACE_NORMAL, this.min) ||
-				isTriangleEdgeIntersectingFace(firstPoint, secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_TOP_FACE_NORMAL, this.max) ||
-				isTriangleEdgeIntersectingFace(firstPoint, secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_BOTTOM_FACE_NORMAL, this.min) ||
-				isTriangleEdgeIntersectingFace(firstPoint, secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_FRONT_FACE_NORMAL, this.max) ||
-				isTriangleEdgeIntersectingFace(firstPoint, secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_BACK_FACE_NORMAL, this.min));
+		return (isTriangleEdgeIntersectingFace(triangle.firstPoint, triangle.secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_RIGHT_FACE_NORMAL, this.max) ||
+				isTriangleEdgeIntersectingFace(triangle.firstPoint, triangle.secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_LEFT_FACE_NORMAL, this.min) ||
+				isTriangleEdgeIntersectingFace(triangle.firstPoint, triangle.secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_TOP_FACE_NORMAL, this.max) ||
+				isTriangleEdgeIntersectingFace(triangle.firstPoint, triangle.secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_BOTTOM_FACE_NORMAL, this.min) ||
+				isTriangleEdgeIntersectingFace(triangle.firstPoint, triangle.secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_FRONT_FACE_NORMAL, this.max) ||
+				isTriangleEdgeIntersectingFace(triangle.firstPoint, triangle.secondPoint, p1p2, p1p3, p2p3, Octree.VOXEL_BACK_FACE_NORMAL, this.min));
 	}
 	
 	private boolean isTriangleEdgeIntersectingFace(float[] p1, float[] p2, float[] p1p2, float[] p1p3, float[] p2p3, float[] n, float[] facePoint)
@@ -306,39 +308,44 @@ public class Octree
 		return true;
 	}
 	
-	private boolean isVoxelEdgeIntersectingTriangle(float[] firstPoint, float[] secondPoint, float[] thirdPoint, float[] normal, float area)
+	private boolean isVoxelEdgeIntersectingTriangle(Triangle triangle)
 	{
 		float[] bottomBackLeft = { this.min[0], this.min[1], this.min[2] };
 		float[] bottomFrontRight = { this.max[0], this.min[1], this.max[2] };
 		float[] topBackRight = { this.max[0], this.max[1], this.min[2] };
 		float[] topFrontLeft = { this.min[0], this.max[1], this.max[2] };
 
-		return (isIntersectingTriangle(bottomBackLeft, new float[] { this.max[0] - this.min[0], 0, 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(bottomBackLeft, new float[] { 0, this.max[1] - this.min[1], 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(bottomBackLeft, new float[] { 0, 0, this.max[2] - this.min[2] }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(bottomFrontRight, new float[] { this.min[0] - this.max[0], 0, 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(bottomFrontRight, new float[] { 0, this.max[1] - this.min[1], 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(bottomFrontRight, new float[] { 0, 0, this.min[2] - this.max[2] }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(topBackRight, new float[] { this.min[0] - this.max[0], 0, 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(topBackRight, new float[] { 0, this.min[1] - this.max[1], 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(topBackRight, new float[] { 0, 0, this.max[2] - this.min[2] }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(topFrontLeft, new float[] { this.max[0] - this.min[0], 0, 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(topFrontLeft, new float[] { 0, this.min[1] - this.max[1], 0 }, firstPoint, secondPoint, thirdPoint, normal, area) ||
-				isIntersectingTriangle(topFrontLeft, new float[] { 0, 0, this.min[2] - this.max[2] }, firstPoint, secondPoint, thirdPoint, normal, area));
+		return (isIntersectingTriangle(bottomBackLeft, new float[] { this.max[0] - this.min[0], 0, 0 }, triangle) ||
+				isIntersectingTriangle(bottomBackLeft, new float[] { 0, this.max[1] - this.min[1], 0 }, triangle) ||
+				isIntersectingTriangle(bottomBackLeft, new float[] { 0, 0, this.max[2] - this.min[2] }, triangle) ||
+				isIntersectingTriangle(bottomFrontRight, new float[] { this.min[0] - this.max[0], 0, 0 }, triangle) ||
+				isIntersectingTriangle(bottomFrontRight, new float[] { 0, this.max[1] - this.min[1], 0 }, triangle) ||
+				isIntersectingTriangle(bottomFrontRight, new float[] { 0, 0, this.min[2] - this.max[2] }, triangle) ||
+				isIntersectingTriangle(topBackRight, new float[] { this.min[0] - this.max[0], 0, 0 }, triangle) ||
+				isIntersectingTriangle(topBackRight, new float[] { 0, this.min[1] - this.max[1], 0 }, triangle) ||
+				isIntersectingTriangle(topBackRight, new float[] { 0, 0, this.max[2] - this.min[2] }, triangle) ||
+				isIntersectingTriangle(topFrontLeft, new float[] { this.max[0] - this.min[0], 0, 0 }, triangle) ||
+				isIntersectingTriangle(topFrontLeft, new float[] { 0, this.min[1] - this.max[1], 0 }, triangle) ||
+				isIntersectingTriangle(topFrontLeft, new float[] { 0, 0, this.min[2] - this.max[2] }, triangle));
 	}
 	
-	private boolean isIntersectingTriangle(float[] start, float[] direction, float[] p1, float[] p2, float[] p3, float[] n, float a)
+	private boolean isIntersectingTriangle(float[] start, float[] direction, Triangle triangle)
 	{
 		float[] intersectionPoint = new float[3];
-		return (isIntersectingInRange(start, direction, n, p1, intersectionPoint) &&
-				triangleTest(intersectionPoint, p1, p2, p3, a, new float[3]));
+		return (isIntersectingInRange(start, direction, triangle.normal, triangle.firstPoint, intersectionPoint) &&
+				triangleTest(intersectionPoint, triangle));
 	}
 	
-	private boolean triangleTest(float[] p, float[] p1, float[] p2, float[] p3, float a, float ai[])
+	private boolean triangleTest(float[] point, Triangle triangle)
 	{
-		ai[0] = calculateArea(p1, p2, p);
-		ai[1] = calculateArea(p, p2, p3);
-		ai[2] = calculateArea(p1, p, p3);
+		return triangleTest(point, triangle.firstPoint, triangle.secondPoint, triangle.thirdPoint, triangle.area, new float[3]);
+	}
+	
+	private boolean triangleTest(float[] point, float[] p1, float[] p2, float[] p3, float a, float ai[])
+	{
+		ai[0] = calculateArea(p1, p2, point);
+		ai[1] = calculateArea(point, p2, p3);
+		ai[2] = calculateArea(p1, point, p3);
 
 		return (1E-5 > Math.abs(a - (ai[0] + ai[1] + ai[2])));
 	}
