@@ -547,9 +547,9 @@ public class Octree {
 		for (Map.Entry<RT_Object, Integer[]> object : this.parent.objects.entrySet()) {
 			RT_Object scene = object.getKey();
 
-			// if (!isBoundingBoxInsideVoxel(scene)) {
-			// continue;
-			// }
+			 if (!couldObjectBeInsideVoxel(scene)) {
+				 continue;
+			 }
 
 			if (scene instanceof I_Sphere) {
 				// Nur Bounding Box Check ...
@@ -575,7 +575,15 @@ public class Octree {
 		return containedObjects;
 	}
 
-	private boolean isBoundingBoxInsideVoxel(RT_Object scene) {
+	private boolean couldObjectBeInsideVoxel(RT_Object scene) {
+		return (areBoundingBoxPointsInsideVoxel(scene) ||
+				areVoxelPointsInsideBoundingBox(scene) ||
+				areBoxesIntersecting(scene.min, scene.max, this.min, this.max) ||
+				areBoxesIntersecting(this.min, this.max, scene.min, scene.max));
+	}
+	
+	private boolean areBoundingBoxPointsInsideVoxel(RT_Object scene)
+	{
 		return (isPointInsideVoxel(scene.min[0], scene.min[1], scene.min[2])
 				|| isPointInsideVoxel(scene.min[0], scene.min[1], scene.max[2])
 				|| isPointInsideVoxel(scene.min[0], scene.max[1], scene.min[2])
@@ -585,6 +593,31 @@ public class Octree {
 				|| isPointInsideVoxel(scene.max[0], scene.max[1], scene.min[2])
 				|| isPointInsideVoxel(scene.max[0], scene.max[1], scene.max[2]));
 	}
+	
+	private boolean areVoxelPointsInsideBoundingBox(RT_Object scene)
+	{
+		return (isPointInsideBox(this.min[0], this.min[1], this.min[2], scene.min, scene.max) ||
+				isPointInsideBox(this.min[0], this.min[1], this.max[2], scene.min, scene.max) ||
+				isPointInsideBox(this.min[0], this.max[1], this.min[2], scene.min, scene.max) ||
+				isPointInsideBox(this.min[0], this.max[1], this.max[2], scene.min, scene.max) ||
+				isPointInsideBox(this.max[0], this.min[1], this.min[2], scene.min, scene.max) ||
+				isPointInsideBox(this.max[0], this.min[1], this.max[2], scene.min, scene.max) ||
+				isPointInsideBox(this.max[0], this.max[1], this.min[2], scene.min, scene.max) ||
+				isPointInsideBox(this.max[0], this.max[1], this.max[2], scene.min, scene.max));
+	}
+	
+	private boolean areBoxesIntersecting(float[] min1, float[] max1, float[] min2, float[] max2)
+	{
+		return (((min1[0] <= min2[0] && max1[0] >= max2[0]) &&
+				 (min1[1] >= min2[1] && max1[1] <= max2[1]) &&
+				 (min1[2] >= min2[2] && max1[2] <= max2[2])) ||
+				((min1[0] >= min2[0] && max1[0] <= max2[0]) &&
+				 (min1[1] <= min2[1] && max1[1] >= max2[1]) &&
+				 (min1[2] >= min2[2] && max1[2] <= max2[2])) ||
+				((min1[0] >= min2[0] && max1[0] <= max2[0]) &&
+				 (min1[1] >= min2[1] && max1[1] <= max2[1]) &&
+				 (min1[2] <= min2[2] && max1[2] >= max2[2])));
+	}
 
 	private boolean isTriangleInsideVoxel(float[] p1, float[] p2, float[] p3, float[] n, float a) {
 		return (isPointInsideVoxel(p1) || isPointInsideVoxel(p2) || isPointInsideVoxel(p3)
@@ -592,14 +625,18 @@ public class Octree {
 	}
 
 	private boolean isPointInsideVoxel(float[] p) {
-		return isPointInsideVoxel(p[0], p[1], p[2]);
+		return isPointInsideBox(p[0], p[1], p[2], this.min, this.max);
 	}
 
 	private boolean isPointInsideVoxel(float x, float y, float z) {
-		boolean a = (this.min[0] <= x && this.max[0] >= x);
-		boolean b = (this.min[1] <= y && this.max[1] >= y);
-		boolean c = (this.min[2] <= z && this.max[2] >= z);
-		return (a && b && c);
+		return isPointInsideBox(x, y, z, this.min, this.max);
+	}
+	
+	private boolean isPointInsideBox(float x, float y, float z, float[] min, float[] max)
+	{
+		return ((min[0] <= x && max[0] >= x) &&
+				(min[1] <= y && max[1] >= y) &&
+				(min[2] <= z && max[2] >= z));
 	}
 
 	private boolean isTriangleEdgeIntersectingVoxel(float[] p1, float[] p2, float[] p3) {
