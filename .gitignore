@@ -1,4 +1,8 @@
-de/fhkl/imst/i/cgma/raytracer/.gitignore
-de/fhkl/imst/i/cgma/raytracer/Raytracer00.java
-de/fhkl/imst/i/cgma/raytracer/file/
-de/fhkl/imst/i/cgma/raytracer/gui/
+**/.directory
+.idea
+manifest.mf
+/nbproject/private/
+/Octree/nbproject/private/
+/build/
+build.xml
+nbproject
