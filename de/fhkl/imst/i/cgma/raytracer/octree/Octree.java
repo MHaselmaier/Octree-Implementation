@@ -14,6 +14,7 @@ import de.fhkl.imst.i.cgma.raytracer.file.T_Mesh;
 
 public class Octree
 {
+	private static final double EPSILON = 1E-5;
 	private static final int MINIMUM_NUMBER_OF_TRIANGLES = 30;
 	private static final float[] VOXEL_RIGHT_FACE_NORMAL = {1, 0, 0};
 	private static final float[] VOXEL_LEFT_FACE_NORMAL = {-1, 0, 0};
@@ -214,9 +215,9 @@ public class Octree
 	
 	private static boolean isPointInsideBox(float x, float y, float z, float[] min, float[] max)
 	{
-		return ((min[0] <= x && max[0] >= x) &&
-				(min[1] <= y && max[1] >= y) &&
-				(min[2] <= z && max[2] >= z));
+		return (((min[0] < x || EPSILON > Math.abs(min[0] - x)) && (max[0] > x || EPSILON > Math.abs(max[0] - x))) &&
+				((min[1] < y || EPSILON > Math.abs(min[1] - y)) && (max[1] > y || EPSILON > Math.abs(max[1] - y))) &&
+				((min[2] < z || EPSILON > Math.abs(min[2] - z)) && (max[2] > z || EPSILON > Math.abs(max[2] - z))));
 	}
 	
 	private static boolean areBoxesIntersecting(float[] firstMin, float[] firstMax, float[] secondMin, float[] secondMax)
@@ -296,7 +297,7 @@ public class Octree
 	private static boolean isIntersecting(float[] start, float[] direction, float[] normal, float[] point, float[] intersectionPoint)
 	{
 		float vn = direction[0] * normal[0] + direction[1] * normal[1] + direction[2] * normal[2];
-		if (Math.abs(vn) < 1E-7) return false;
+		if (Math.abs(vn) < EPSILON) return false;
 
 		float pen = (point[0] - start[0]) * normal[0] + (point[1] - start[1]) * normal[1] + (point[2] - start[2]) * normal[2];
 		float t = pen / vn;
@@ -347,7 +348,7 @@ public class Octree
 		ai[1] = calculateArea(point, p2, p3);
 		ai[2] = calculateArea(p1, point, p3);
 
-		return (1E-5 > Math.abs(a - (ai[0] + ai[1] + ai[2])));
+		return (EPSILON > Math.abs(a - (ai[0] + ai[1] + ai[2])));
 	}
 	
 	private float calculateArea(float[] p1, float[] p2, float[] p3)
@@ -524,7 +525,7 @@ public class Octree
 					if (rayVn >= 0) continue;
 
 					// no intersection point? => next triangle
-					if (Math.abs(rayVn) < 1E-7) continue;
+					if (Math.abs(rayVn) < EPSILON) continue;
 
 					pen = (p1[0] - eye[0]) * n[0] + (p1[1] - eye[1]) * n[1]
 							+ (p1[2] - eye[2]) * n[2];
@@ -666,7 +667,7 @@ public class Octree
 		float intersectionPoint[] = new float[3];
 
 		// front and back
-		if (Math.abs(ray[2]) > 1E-5)
+		if (Math.abs(ray[2]) > EPSILON)
 		{
 			// n = [0, 0, 1]
 			// front xy
@@ -680,7 +681,7 @@ public class Octree
 
 			// n = [0, 0, -1]
 			// back xy
-			t = (eye[2] - object.min[2]) / ray[2];
+			t = (object.min[2] - eye[2]) / ray[2];
 
 			intersectionPoint[0] = eye[0] + t * ray[0];
 			intersectionPoint[1] = eye[1] + t * ray[1];
@@ -690,11 +691,11 @@ public class Octree
 		}
 
 		// left and right
-		if (Math.abs(ray[0]) > 1E-5)
+		if (Math.abs(ray[0]) > EPSILON)
 		{
 			// n = [-1, 0, 0]
 			// left xy
-			t = (eye[0] - object.min[0]) / ray[0];
+			t = (object.min[0] - eye[0]) / ray[0];
 
 			intersectionPoint[1] = eye[1] + t * ray[1];
 			intersectionPoint[2] = eye[2] + t * ray[2];
@@ -714,7 +715,7 @@ public class Octree
 		}
 		
 		// top and bottom
-		if (Math.abs(ray[1]) > 1E-5)
+		if (Math.abs(ray[1]) > EPSILON)
 		{
 			// n = [0, 1, 0]
 			// top xy
@@ -728,7 +729,7 @@ public class Octree
 
 			// n = [0, -1, 0]
 			// bottom xy
-			t = (eye[1] - object.min[1]) / ray[1];
+			t = (object.min[1] - eye[1]) / ray[1];
 
 			intersectionPoint[0] = eye[0] + t * ray[0];
 			intersectionPoint[2] = eye[2] + t * ray[2];
@@ -777,9 +778,9 @@ public class Octree
 			}
 		}
 
-		ir = Math.min(ir, 1);
-		ig = Math.min(ig, 1);
-		ib = Math.min(ib, 1);
+		ir = Math.max(Math.min(ir, 1), 0);
+		ig = Math.max(Math.min(ig, 1), 0);
+		ib = Math.max(Math.min(ib, 1), 0);
 		return new Color(ir, ig, ib);
 	}
 	
