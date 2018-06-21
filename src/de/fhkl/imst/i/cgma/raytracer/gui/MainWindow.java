@@ -66,6 +66,7 @@ public class MainWindow extends JFrame implements RayTracerResolutionChangedList
 			menuBar.add(actMenu);
 			JMenuItem miRt = actMenu.add(controller.getStartRayTraceAction());
 			miRt.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+            actMenu.add(controller.getToogleOctreeAction());
 		}
 		
 		Container c = getContentPane();

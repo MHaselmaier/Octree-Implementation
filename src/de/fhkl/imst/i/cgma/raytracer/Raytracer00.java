@@ -14,6 +14,7 @@ import de.fhkl.imst.i.cgma.raytracer.file.T_Mesh;
 import de.fhkl.imst.i.cgma.raytracer.gui.IRayTracerImplementation;
 import de.fhkl.imst.i.cgma.raytracer.gui.RayTracerGui;
 import de.fhkl.imst.i.cgma.raytracer.octree.Octree;
+import java.util.Optional;
 
 public class Raytracer00 implements IRayTracerImplementation {
         // viewing volume with infinite end
@@ -30,6 +31,8 @@ public class Raytracer00 implements IRayTracerImplementation {
 
         private int resx, resy; // viewport resolution
         private float h, w, aspect; // window height, width and aspect ratio
+        
+        public boolean isOctreeEnabled = false;
 
         Vector<RT_Object> objects;
 
@@ -77,7 +80,11 @@ public class Raytracer00 implements IRayTracerImplementation {
                 // prepare mesh data (normals and areas)
                 prepareMeshData();
 
-                Octree tree = new Octree(this.objects);
+                Optional<Octree> octree = Optional.empty();
+                if(isOctreeEnabled) 
+                    octree = Optional.of(new Octree(this.objects));
+                
+                System.out.println("Octree status:" + isOctreeEnabled);
                 
                 // hardcoded viewing volume with fovy and near
                 setViewParameters(90.0f, 1.0f);
@@ -105,8 +112,11 @@ public class Raytracer00 implements IRayTracerImplementation {
 
                                 // get color or null along the ray
                                 //color=traceRayAndGetColor...
-                                //color = traceRayAndGetColor(rayEx, rayEy, rayEz, rayVx, rayVy, rayVz);
-                                color = tree.traceRay(new float[]{rayEx, rayEy, rayEz}, new float[]{rayVx, rayVy, rayVz});
+                                
+                                if(octree.isPresent())
+                                    color = octree.get().traceRay(new float[]{rayEx, rayEy, rayEz}, new float[]{rayVx, rayVy, rayVz});
+                                else
+                                    color = traceRayAndGetColor(rayEx, rayEy, rayEz, rayVx, rayVy, rayVz);
                                 // if color!=null set pixel with color
 
                                 if (color != null) {
@@ -854,6 +864,6 @@ public class Raytracer00 implements IRayTracerImplementation {
         public static void main(String[] args) {
                 Raytracer00 rt = new Raytracer00();
 
-                rt.doRayTrace();
+                //rt.doRayTrace();
         }
 }

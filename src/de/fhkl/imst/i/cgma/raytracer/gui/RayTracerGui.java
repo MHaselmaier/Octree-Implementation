@@ -28,6 +28,9 @@ import javax.swing.filechooser.FileFilter;
 import de.fhkl.imst.i.cgma.raytracer.file.RTFile;
 import de.fhkl.imst.i.cgma.raytracer.file.RTFileReader;
 import de.fhkl.imst.i.cgma.raytracer.file.RT_Object;
+import de.fhkl.imst.i.cgma.raytracer.Raytracer00;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 
 public class RayTracerGui implements DropTargetListener {
 	private int resX;
@@ -360,6 +363,40 @@ public class RayTracerGui implements DropTargetListener {
 			});
             t.start();
         }
+    }
+    
+    private ToogleOctreeAction toogleOctreeAction = new ToogleOctreeAction("Octree an");
+    
+    public ToogleOctreeAction getToogleOctreeAction()
+    {
+        return this.toogleOctreeAction;
+    }
+    
+    class ToogleOctreeAction extends AbstractAction
+    {
+        public ToogleOctreeAction(String name)
+        {
+            super(name);
+        }
+        
+        @Override
+        public void actionPerformed(ActionEvent e)
+        {
+                
+            if(implementation instanceof Raytracer00)
+            {
+                ((Raytracer00)implementation).isOctreeEnabled = !((Raytracer00)implementation).isOctreeEnabled;
+                
+            JMenuItem menu = (JMenuItem) e.getSource();
+            
+            if(((Raytracer00)implementation).isOctreeEnabled)
+                menu.setText("Octree aus");
+            else
+                menu.setText("Octree an");
+            
+            }
+        }
+                
     }
 	
 	List<RayTracerResolutionChangedListener> resChangedListeners = new ArrayList<RayTracerResolutionChangedListener>();
