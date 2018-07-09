@@ -6,3 +6,4 @@ manifest.mf
 /build/
 build.xml
 nbproject
+/bin/

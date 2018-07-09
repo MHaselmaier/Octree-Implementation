@@ -15,6 +15,8 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
+import de.fhkl.imst.i.cgma.raytracer.easteregg.AllYourBaseAreBelongToUsEasterEgg;
+import de.fhkl.imst.i.cgma.raytracer.easteregg.KonamiCode;
 import de.fhkl.imst.i.cgma.raytracer.file.RT_Object;
 import de.fhkl.imst.i.cgma.raytracer.gui.RayTracerGui.SceneGraphChangedListener;
 
@@ -29,12 +31,12 @@ public class RaySceneGraphWidget extends JPanel implements TreeSelectionListener
 	DefaultMutableTreeNode root = new DefaultMutableTreeNode("SceneGraph");
 
 	public RaySceneGraphWidget(RayTracerGui sController) {
-		
 		controller = sController;
 		tree = new JTree(root);
 		scrollPane = new JScrollPane(tree);
 		tree.setVisibleRowCount(0);
 		tree.addTreeSelectionListener(this);
+		tree.addKeyListener(new AllYourBaseAreBelongToUsEasterEgg(new KonamiCode()).getKeyboardListener());
 		
 		JPanel addDeletePanel = new JPanel(new GridLayout(1, 2));
 		JButton addButton = new JButton(controller.getLoadFileAction());

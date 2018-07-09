@@ -42,7 +42,7 @@ public class KeyboardListener implements java.awt.event.KeyListener
 
     private boolean checkPressedKeyPattern()
     {
-        return 0 == Arrays.compare(this.last_ten_pressed_keys, this.pattern.getPattern());
+        return Arrays.equals(this.last_ten_pressed_keys, this.pattern.getPattern());
     }
 
     @Override

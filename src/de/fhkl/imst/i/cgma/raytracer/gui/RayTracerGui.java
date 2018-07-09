@@ -21,16 +21,15 @@ import java.util.Vector;
 import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.JFileChooser;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
 import javax.swing.filechooser.FileFilter;
 
+import de.fhkl.imst.i.cgma.raytracer.Raytracer00;
 import de.fhkl.imst.i.cgma.raytracer.file.RTFile;
 import de.fhkl.imst.i.cgma.raytracer.file.RTFileReader;
 import de.fhkl.imst.i.cgma.raytracer.file.RT_Object;
-import de.fhkl.imst.i.cgma.raytracer.Raytracer00;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 
 public class RayTracerGui implements DropTargetListener {
 	private int resX;
@@ -195,7 +194,7 @@ public class RayTracerGui implements DropTargetListener {
         }
 	}
 	
-	private LoadFileAction loadFileAction = new LoadFileAction("HinzufÃ¼gen");
+	private LoadFileAction loadFileAction = new LoadFileAction("Hinzufügen");
 	protected LoadFileAction getLoadFileAction() {
 		return loadFileAction;
 	}
@@ -238,7 +237,7 @@ public class RayTracerGui implements DropTargetListener {
     }
 	
 	
-	private DeleteSgNodeAction deleteSgNodeAction = new DeleteSgNodeAction("LÃ¶schen");
+	private DeleteSgNodeAction deleteSgNodeAction = new DeleteSgNodeAction("Löschen");
 	protected DeleteSgNodeAction getDeleteSgNodeAction() {
 		return deleteSgNodeAction;
 	}

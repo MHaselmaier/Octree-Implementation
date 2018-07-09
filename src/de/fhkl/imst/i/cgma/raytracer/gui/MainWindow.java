@@ -49,7 +49,7 @@ public class MainWindow extends JFrame implements RayTracerResolutionChangedList
 		
 		
 		if(controller.getInteractiveMode()) {
-			JMenu resMenu = new JMenu("AuflÃ¶sung");
+			JMenu resMenu = new JMenu("Auflösung");
 			menuBar.add(resMenu);
 			resMenu.add(controller.getChangeResolutionAction(250, 250));
 			resMenu.add(controller.getChangeResolutionAction(500, 500));
