@@ -62,6 +62,7 @@ public class MainWindow extends JFrame implements RayTracerResolutionChangedList
 			JMenuItem miDo = objMenu.add(controller.getDeleteSgNodeAction());
 			miDo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
 			
+			// ### CHANGED ###
 			JMenu actMenu = new JMenu("RayTracing");
 			menuBar.add(actMenu);
 			JMenuItem miRt = actMenu.add(controller.getStartRayTraceAction());
