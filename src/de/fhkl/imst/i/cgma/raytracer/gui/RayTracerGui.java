@@ -364,6 +364,7 @@ public class RayTracerGui implements DropTargetListener {
         }
     }
     
+    // ### CHANGED ###
     private ToogleOctreeAction toogleOctreeAction = new ToogleOctreeAction("Octree an");
     
     public ToogleOctreeAction getToogleOctreeAction()
@@ -386,12 +387,12 @@ public class RayTracerGui implements DropTargetListener {
             {
                 ((Raytracer00)implementation).isOctreeEnabled = !((Raytracer00)implementation).isOctreeEnabled;
                 
-            JMenuItem menu = (JMenuItem) e.getSource();
-            
-            if(((Raytracer00)implementation).isOctreeEnabled)
-                menu.setText("Octree aus");
-            else
-                menu.setText("Octree an");
+	            JMenuItem menu = (JMenuItem) e.getSource();
+	            
+	            if(((Raytracer00)implementation).isOctreeEnabled)
+	                menu.setText("Octree aus");
+	            else
+	                menu.setText("Octree an");
             
             }
         }

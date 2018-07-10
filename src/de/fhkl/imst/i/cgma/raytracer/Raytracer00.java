@@ -80,6 +80,7 @@ public class Raytracer00 implements IRayTracerImplementation {
                 // prepare mesh data (normals and areas)
                 prepareMeshData();
 
+                // ### CHANGED ###
                 Optional<Octree> octree = Optional.empty();
                 if(isOctreeEnabled) 
                     octree = Optional.of(new Octree(this.objects));
@@ -113,6 +114,7 @@ public class Raytracer00 implements IRayTracerImplementation {
                                 // get color or null along the ray
                                 //color=traceRayAndGetColor...
                                 
+                                // ### CHANGED ###
                                 if(octree.isPresent())
                                     color = octree.get().traceRay(new float[]{rayEx, rayEy, rayEz}, new float[]{rayVx, rayVy, rayVz});
                                 else

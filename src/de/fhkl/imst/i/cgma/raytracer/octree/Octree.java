@@ -26,10 +26,6 @@ public class Octree
 	private float[] ambientLightColor = { 0.25f, 0.25f, 0.25f };
 	private float[] specularLight = { 1.0f, 1.0f, 1.0f };
 	private float[] centerOfPointLight = { 4.0f, 4.0f, 2.0f };
-
-	public static int maxDepth = Integer.MAX_VALUE;
-	public static int totalDepth = 0;
-	public int depth = 0;
 	
 	private float[] min = new float[3];
 	private float[] max = new float[3];
@@ -473,6 +469,8 @@ public class Octree
 				ip[0] = eye[0] + t * ray[0];
 				ip[1] = eye[1] + t * ray[1];
 				ip[2] = eye[2] + t * ray[2];
+				
+				// ### CHANGED ###
 				if (!Octree.isPointInsideBox(ip, this.min, this.max)) continue;
 
 				// from here: t < minT
@@ -540,6 +538,8 @@ public class Octree
 					ip[0] = eye[0] + t * ray[0];
 					ip[1] = eye[1] + t * ray[1];
 					ip[2] = eye[2] + t * ray[2];
+					
+					// ### CHANGED ###
 					if (!Octree.isPointInsideBox(ip, this.min, this.max)) continue;
 
 					// no intersection point with the triangle? => next
@@ -826,14 +826,5 @@ public class Octree
 		}
 
 		return minFactor;
-	}
-
-	private void goDeeper() {
-		Octree current = this;
-		while (null != current.parent)
-		{
-			current = current.parent;
-		}
-		current.depth++;
 	}
 }
