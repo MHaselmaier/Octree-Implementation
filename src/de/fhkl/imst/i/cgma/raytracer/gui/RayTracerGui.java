@@ -127,9 +127,9 @@ public class RayTracerGui implements DropTargetListener {
 		if(sTime < 0)
 			sTime = System.currentTimeMillis();
 		bufferedImage.setRGB(x, y, rgb);
-		sPoints++;
+		sPoints = x * resY + y + 1;
 		updateWorker.requestUpdate();
-		/*callProgressChangedListeners(System.currentTimeMillis()-sTime, points, sPoints);*/
+		callProgressChangedListeners(System.currentTimeMillis()-sTime, points, sPoints);
 	}
 	
 	public void reset() {

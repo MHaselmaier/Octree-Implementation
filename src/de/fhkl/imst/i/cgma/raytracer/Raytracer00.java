@@ -74,7 +74,7 @@ public class Raytracer00 implements IRayTracerImplementation {
                 float x, y, z;			// intersection point in viewing plane
                 float rayEx, rayEy, rayEz;	// eye point==ray starting point
                 float rayVx, rayVy, rayVz;	// ray vector
-                Color color;
+                Color color = null;
           
 
                 // prepare mesh data (normals and areas)
@@ -97,7 +97,6 @@ public class Raytracer00 implements IRayTracerImplementation {
                 //Prepare mesh data for shading
                 precalculateMeshDataShading();
 
-                Random rd = new Random();
                 // xp, yp: pixel coordinates
                 for (int xp = 0; xp < resx; ++xp) {
                         for (int yp = 0; yp < resy; ++yp) {
@@ -127,6 +126,7 @@ public class Raytracer00 implements IRayTracerImplementation {
 
                         }
                 }
+                gui.setPixel(resx - 1, resy - 1, color != null ? color.getRGB() : Color.BLACK.getRGB());
         }
 
         // returns Color object or null if no intersection was found
